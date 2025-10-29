@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Chatbot - Cloudflare</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="chat-box">
+      <div class="chat-header">
+        <h1>AI Chatbot</h1>
+        <button id="clearBtn" class="clear-btn">Clear Chat</button>
+      </div>
+      
+      <div id="chatMessages" class="chat-messages">
+        <div class="welcome-message">
+          <p>👋 Welcome! I'm your AI assistant powered by Cloudflare Workers AI.</p>
+          <p>Ask me anything!</p>
+        </div>
+      </div>
+      
+      <div class="chat-input-container">
+        <input 
+          type="text" 
+          id="messageInput" 
+          class="message-input" 
+          placeholder="Type your message..." 
+          autocomplete="off"
+        />
+        <button id="sendBtn" class="send-btn">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
+
