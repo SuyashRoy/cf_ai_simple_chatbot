@@ -8,6 +8,9 @@ echo "🚀 Cloudflare AI Chatbot - Simplified Deployment"
 echo "================================================="
 echo ""
 
+# Set up environment variables
+export CLOUDFLARE_API_TOKEN=cLG43LwymB8__tpycrKBJgKgRJCK8_dDlatKnDtn
+
 # Step 1: Fix npm cache permissions
 echo "📝 Step 1: Fixing npm cache permissions..."
 echo "Running: sudo chown -R 501:20 /Users/yugeshchandraroy/.npm"
@@ -37,16 +40,10 @@ fi
 echo "✅ Dependencies installed!"
 echo ""
 
-# Step 3: Check if logged in
-echo "🔐 Step 4: Checking Cloudflare login..."
-npx wrangler whoami &> /dev/null
-
-if [ $? -ne 0 ]; then
-    echo "📝 Not logged in. Opening login..."
-    npx wrangler login
-else
-    echo "✅ Already logged in to Cloudflare!"
-fi
+# Step 3: Set API token
+echo "🔐 Step 4: Setting up Cloudflare API token..."
+export CLOUDFLARE_API_TOKEN=cLG43LwymB8__tpycrKBJgKgRJCK8_dDlatKnDtn
+echo "✅ API token configured!"
 
 echo ""
 echo "🚀 Step 5: Deploying to Cloudflare..."
