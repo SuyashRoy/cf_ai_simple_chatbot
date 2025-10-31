@@ -1,5 +1,6 @@
 // Cloudflare Worker - Main entry point for API routes
 export { ChatMemory } from './durableObject.js';
+import { inlineHTML } from './inlineHTML.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -123,39 +124,58 @@ export default {
     }
 
     // For non-API routes, serve static assets from Workers Sites
-    // When [site] is configured, __STATIC_CONTENT is automatically available
     try {
-      // Get the asset from the KV namespace
-      const url = new URL(request.url);
+      if (!env.__STATIC_CONTENT) {
+        throw new Error('__STATIC_CONTENT binding not available');
+      }
+      
       let path = url.pathname;
       
-      // If path is root or doesn't have extension, serve index.html
-      if (path === '/' || !path.includes('.')) {
+      // Default to index.html for root
+      if (path === '/') {
         path = '/index.html';
       }
       
-      // Get the asset key with hash (Workers Sites stores files with content hashes)
-      const assetKey = path.substring(1); // Remove leading slash
+      // Remove leading slash for KV lookup
+      const assetPath = path.startsWith('/') ? path.substring(1) : path;
       
-      // Try to get from manifest first
-      let manifestJSON = {};
-      if (env.__STATIC_CONTENT_MANIFEST) {
-        manifestJSON = JSON.parse(env.__STATIC_CONTENT_MANIFEST);
+      // Try to get the asset - Workers Sites stores files with their original names
+      // OR with hashed names depending on configuration
+      let asset = await env.__STATIC_CONTENT.get(assetPath, 'arrayBuffer');
+      
+      // If not found, try with hashed name pattern (list all keys starting with filename)
+      if (!asset) {
+        // Try to find the hashed version by listing keys with the base filename
+        const baseFilename = assetPath.split('.').slice(0, -1).join('.');
+        const extension = assetPath.split('.').pop();
+        
+        // Common pattern: filename.hash.extension
+        // Try pattern matching
+        const keys = [
+          `${baseFilename}.*.${extension}`,
+          assetPath,
+          path,
+        ];
+        
+        for (const key of keys) {
+          try {
+            asset = await env.__STATIC_CONTENT.get(key, 'arrayBuffer');
+            if (asset) break;
+          } catch (e) {
+            // Try next key
+          }
+        }
       }
-      
-      // Get the hashed key from manifest, or use original key
-      const hashedKey = manifestJSON[assetKey] || assetKey;
-      
-      // Fetch from KV
-      const asset = await env.__STATIC_CONTENT.get(hashedKey, 'arrayBuffer');
       
       if (asset) {
         // Determine content type
-        const contentType = 
-          path.endsWith('.html') ? 'text/html' :
-          path.endsWith('.css') ? 'text/css' :
-          path.endsWith('.js') ? 'application/javascript' :
-          'application/octet-stream';
+        let contentType = 'application/octet-stream';
+        if (assetPath.endsWith('.html')) contentType = 'text/html; charset=utf-8';
+        else if (assetPath.endsWith('.css')) contentType = 'text/css';
+        else if (assetPath.endsWith('.js')) contentType = 'application/javascript';
+        else if (assetPath.endsWith('.json')) contentType = 'application/json';
+        else if (assetPath.endsWith('.png')) contentType = 'image/png';
+        else if (assetPath.endsWith('.jpg') || assetPath.endsWith('.jpeg')) contentType = 'image/jpeg';
         
         return new Response(asset, {
           headers: {
@@ -164,11 +184,22 @@ export default {
           },
         });
       }
+      
+      // Asset not found after all attempts
+      throw new Error(`Asset not found: ${assetPath}`);
     } catch (e) {
-      console.error('Asset fetch error:', e);
+      console.error('Asset error:', e.message);
+      
+      // Fallback: Return complete inline HTML with CSS and JS embedded
+      if (url.pathname === '/' || url.pathname === '/index.html') {
+        return new Response(inlineHTML, {
+          status: 200,
+          headers: { 'Content-Type': 'text/html; charset=utf-8' }
+        });
+      }
+      
+      return new Response('Not Found', { status: 404 });
     }
-    
-    return new Response('Not Found', { status: 404 });
   },
 };
 
